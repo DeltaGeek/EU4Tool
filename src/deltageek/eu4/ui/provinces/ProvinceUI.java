@@ -34,6 +34,7 @@ public class ProvinceUI extends JPanel {
 
         cbxProvinceFilter = new JComboBox<>(provinceFilterModel);
         cbxProvinceFilter.getModel().setSelectedItem(null);
+        cbxProvinceFilter.setRenderer(new FilterListCellRenderer());
         cbxProvinceFilter.addActionListener(handlers.getFilterHandler());
         cbxProvinceFilter.setEnabled(false);
 

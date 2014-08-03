@@ -15,7 +15,7 @@ public class MapData {
     private Set<Integer> seaProvinces = new HashSet<>();
     private Set<Integer> lakeProvinces = new HashSet<>();
     private Set<Integer> coastalProvinces = new HashSet<>();
-    private Set<Integer> wastelandProvinces = new HashSet();
+    private Set<Integer> wastelandProvinces = new HashSet<>();
 
     private Map<MapFile, Path> dataFiles = new HashMap<>();
 

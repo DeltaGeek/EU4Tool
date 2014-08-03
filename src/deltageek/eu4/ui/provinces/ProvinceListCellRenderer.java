@@ -8,8 +8,6 @@ import java.awt.*;
 public class ProvinceListCellRenderer extends DefaultListCellRenderer {
     private ProvinceUI ui;
 
-    private static final Color CYAN = new Color(10, 166, 250);
-
     public ProvinceListCellRenderer(){
         this(null);
     }
@@ -32,24 +30,7 @@ public class ProvinceListCellRenderer extends DefaultListCellRenderer {
                 setText(province.name);
         }
 
-        switch(province.provinceType){
-            case LAND:
-                setForeground(Color.BLACK);
-                break;
-            case SEA:
-                setForeground(Color.BLUE);
-                break;
-            case LAKE:
-                setForeground(CYAN);
-                break;
-            case WASTELAND:
-                setForeground(Color.GRAY);
-                break;
-            default:
-                setForeground(Color.BLACK);
-                break;
-        }
-
+        setForeground(ProvinceTypeToColorConverter.getColorForProvinceType(province.provinceType));
         return this;
     }
 }
