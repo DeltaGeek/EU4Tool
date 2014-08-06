@@ -6,14 +6,14 @@ import javax.swing.*;
 import java.awt.*;
 
 public class ProvinceListCellRenderer extends DefaultListCellRenderer {
-    private ProvinceUI ui;
+    private ProvincePane ui;
 
     public ProvinceListCellRenderer(){
         this(null);
     }
 
-    public ProvinceListCellRenderer(ProvinceUI provinceUI) {
-        ui = provinceUI;
+    public ProvinceListCellRenderer(ProvincePane provincePane) {
+        ui = provincePane;
     }
 
     @Override

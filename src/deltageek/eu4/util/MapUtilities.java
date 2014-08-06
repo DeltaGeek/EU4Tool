@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MapUtilities {
+    public final static String ISO_CHARSET = "ISO-8859-1";
+    public final static String UTF_CHARSET = "UTF-8";
+
     public static List<Coordinate> getPointsBetween(Point2D source, Point2D destination){
         List<Coordinate> points = new ArrayList<>();
         int xs = (int) source.getX();

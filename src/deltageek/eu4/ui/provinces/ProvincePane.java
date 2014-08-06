@@ -1,41 +1,41 @@
 package deltageek.eu4.ui.provinces;
 
-import deltageek.eu4.model.EU4Data;
+import deltageek.eu4.model.MapData;
 import deltageek.eu4.model.Province;
 import deltageek.eu4.model.ProvinceType;
 
 import javax.swing.*;
 import java.awt.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
-public class ProvinceUI extends JPanel {
+public class ProvincePane extends JPanel {
+    private MapData mapData;
 
     private DefaultListModel<Province> provinceListModel = new DefaultListModel<>();
     private DefaultComboBoxModel<ProvinceType> provinceFilterModel = new DefaultComboBoxModel<>(ProvinceType.getFilterValues());
 
-    private JTextField txtLoadDir;
-    private JButton btnLoad;
     private JList<Province> lstProvinces;
     private JList<Province> lstAdjacent;
     private JComboBox<ProvinceType> cbxProvinceFilter;
 
     private boolean isUpdatingAdjacency = false;
 
-    public ProvinceUI(final EU4Data data) {
+    public ProvincePane(){
+        this(null);
+    }
+
+    public ProvincePane(MapData data) {
         super(new BorderLayout());
 
-        ProvinceEventHandlers handlers = new ProvinceEventHandlers(this, data);
+        mapData = data;
 
-        btnLoad = new JButton("Load Data");
-        btnLoad.addActionListener(handlers.getLoadButtonHandler());
-
-        txtLoadDir = new JTextField("D:\\Steam\\steamapps\\common\\Europa Universalis IV");
+        ProvinceUIHandlers handlers = new ProvinceUIHandlers(this);
 
         cbxProvinceFilter = new JComboBox<>(provinceFilterModel);
         cbxProvinceFilter.getModel().setSelectedItem(null);
         cbxProvinceFilter.setRenderer(new FilterListCellRenderer());
-        cbxProvinceFilter.addActionListener(handlers.getFilterHandler());
+        cbxProvinceFilter.addActionListener(e -> refresh());
         cbxProvinceFilter.setEnabled(false);
 
         lstProvinces = new JList<>(provinceListModel);
@@ -48,30 +48,39 @@ public class ProvinceUI extends JPanel {
         lstAdjacent.addMouseListener(handlers.getAdjacencySelectionHandler());
         lstAdjacent.setCellRenderer(new ProvinceListCellRenderer(this));
 
-        JPanel textPanel = new JPanel();
-        textPanel.add(new JLabel("EU 4 Base Directory"));
-        textPanel.add(txtLoadDir);
-        textPanel.add(btnLoad);
-
         JPanel provincePanel = new JPanel(new BorderLayout());
         provincePanel.add(cbxProvinceFilter, BorderLayout.NORTH);
         provincePanel.add(new JScrollPane(lstProvinces), BorderLayout.CENTER);
 
-        add(textPanel, BorderLayout.NORTH);
+        JScrollPane adjacencyScroll = new JScrollPane(lstAdjacent);
+        JPanel adjacencyPanel = new JPanel(new BorderLayout());
+        JLabel adjacencyHeader = new JLabel("Adjacent Provinces");
+        adjacencyHeader.setHorizontalAlignment(SwingConstants.CENTER);
+        adjacencyPanel.add(adjacencyHeader, BorderLayout.NORTH);
+        adjacencyPanel.add(adjacencyScroll, BorderLayout.CENTER);
+
         add(provincePanel, BorderLayout.WEST);
-        add(new JScrollPane(lstAdjacent), BorderLayout.CENTER);
+        add(adjacencyPanel, BorderLayout.CENTER);
     }
 
-    public Path getLoadPath(){
-        return Paths.get(txtLoadDir.getText());
-    }
+    public void refresh(){
+        ProvinceType filter = getSelectedProvinceFilter();
 
-    public void clearProvinceSelection(){
-        lstProvinces.clearSelection();
-        provinceListModel.removeAllElements();
+        if(mapData != null) {
+            java.util.List<Province> filteredProvinces =
+                    mapData.provinces
+                            .stream()
+                            .filter(p -> filter == null || p.provinceType == filter)
+                            .collect(Collectors.toList());
+
+            Collections.sort(filteredProvinces);
+            setProvinces(filteredProvinces);
+        }
     }
 
     public void setProvinces(java.util.List<Province> provinces){
+        lstProvinces.clearSelection();
+        provinceListModel.removeAllElements();
         provinces.forEach(provinceListModel::addElement);
     }
 
@@ -119,5 +128,10 @@ public class ProvinceUI extends JPanel {
 
     public void setProvinceFilterEnabled(boolean enabled){
         cbxProvinceFilter.setEnabled(enabled);
+    }
+
+    public void setData(MapData data) {
+        mapData = data;
+        refresh();
     }
 }
