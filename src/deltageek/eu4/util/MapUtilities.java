@@ -1,12 +1,13 @@
 package deltageek.eu4.util;
 
 import java.awt.geom.Point2D;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MapUtilities {
-    public final static String ISO_CHARSET = "ISO-8859-1";
-    public final static String UTF_CHARSET = "UTF-8";
+    public final static Charset ISO_CHARSET = Charset.forName("ISO-8859-1");
+    public final static Charset UTF_CHARSET = Charset.forName("UTF-8");
 
     public static List<Coordinate> getPointsBetween(Point2D source, Point2D destination){
         List<Coordinate> points = new ArrayList<>();

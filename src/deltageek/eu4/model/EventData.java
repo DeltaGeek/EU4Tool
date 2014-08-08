@@ -1,5 +1,7 @@
 package deltageek.eu4.model;
 
+import deltageek.eu4.util.MapUtilities;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -23,9 +25,9 @@ public class EventData {
 
         Files.list(eventDirPath)
              .forEach(unchecked(f -> {
-                 BufferedReader reader = Files.newBufferedReader(f);
-
-                 parseEventsIn(reader);
+                 try(BufferedReader reader = Files.newBufferedReader(f, MapUtilities.ISO_CHARSET)){
+                     parseEventsIn(reader);
+                 }
              }));
     }
 

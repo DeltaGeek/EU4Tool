@@ -7,8 +7,11 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -77,98 +80,84 @@ public class MapData {
     private void loadMapData(Path baseDir) throws IOException {
         Path mapDataPath = baseDir.resolve("map/default.map");
 
-        Scanner scanner = new Scanner(mapDataPath, MapUtilities.ISO_CHARSET);
+        try(BufferedReader reader = Files.newBufferedReader(mapDataPath, MapUtilities.ISO_CHARSET)){
+            String line = reader.readLine();
+            int width = Integer.parseInt(line.split(" = ")[1]);
+            line = reader.readLine();
+            int height = Integer.parseInt(line.split(" = ")[1]);
 
-        String line = scanner.nextLine();
-        int width = Integer.parseInt(line.split(" = ")[1]);
-        line = scanner.nextLine();
-        int height = Integer.parseInt(line.split(" = ")[1]);
+            reader.readLine();
+            line = reader.readLine();
+            int provinceCount = Integer.parseInt(line.split(" = ")[1]);
 
-        scanner.nextLine();
-        line = scanner.nextLine();
-        int provinceCount = Integer.parseInt(line.split(" = ")[1]);
+            this.width = width;
+            this.height = height;
+            this.provinceCount = provinceCount;
 
-        this.width = width;
-        this.height = height;
-        this.provinceCount = provinceCount;
-
-        // Load sea province list
-        scanner.nextLine();
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
-
-            if(line.startsWith("}"))
-                break;
-
-            for(String provinceId : line.split(" ")) {
-                seaProvinceIds.add(Integer.parseInt(provinceId));
+            // Load sea province list
+            reader.readLine();  // Skip start of sea region
+            line = reader.readLine();
+            while (line != null && !line.startsWith("}")) {
+                for(String provinceId : line.trim().split(" ")) {
+                    seaProvinceIds.add(Integer.parseInt(provinceId));
+                }
+                line = reader.readLine();
             }
-        }
 
-        // Load lake province list
-        scanner.nextLine();
-        scanner.nextLine();
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
+            reader.readLine();
 
-            if(line.startsWith("}"))
-                break;
-
-            for(String provinceId : line.split(" ")) {
-                lakeProvinceIds.add(Integer.parseInt(provinceId));
+            // Load lake province list
+            reader.readLine();  // Skip start of lake region
+            line = reader.readLine();
+            while (line != null && !line.startsWith("}")) {
+                for(String provinceId : line.trim().split(" ")) {
+                    lakeProvinceIds.add(Integer.parseInt(provinceId));
+                }
+                line = reader.readLine();
             }
-        }
 
-        // Load forced coastal province list
-        scanner.nextLine();
-        scanner.nextLine();
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
+            reader.readLine();
 
-            if(line.startsWith("}"))
-                break;
-
-            for(String provinceId : line.split(" ")) {
-                coastalProvinceIds.add(Integer.parseInt(provinceId));
+            // Load forced coastal province list
+            reader.readLine();  // Skip start of coastal province region
+            line = reader.readLine();
+            while (line != null && !line.startsWith("}")) {
+                for(String provinceId : line.trim().split(" ")) {
+                    coastalProvinceIds.add(Integer.parseInt(provinceId));
+                }
+                line = reader.readLine();
             }
-        }
 
-        // Load map file list
-        scanner.nextLine();
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
+            reader.readLine();
 
-            if(line.isEmpty() || line.startsWith("canal_definition"))
-                break;
-
-            String[] tokens = line.split(" = ");
-            addDataFile(tokens[0], tokens[1].replace("\"", ""));
+            // Load map file list
+            line = reader.readLine();
+            while (line != null && !line.startsWith("canal_definition")){
+                String[] tokens = line.split(" = ");
+                addDataFile(tokens[0], tokens[1].replace("\"", ""));
+                line = reader.readLine();
+            }
         }
 
         // Load wasteland province info
         Path climatePath = getFilePath(MapFile.CLIMATE, baseDir);
-        scanner = new Scanner(climatePath, MapUtilities.ISO_CHARSET);
+        try(BufferedReader reader = Files.newBufferedReader(climatePath, MapUtilities.ISO_CHARSET)) {
+            String line = reader.readLine();
 
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
+            while (line != null) {
+                // Skip empty lines and comments
+                if(line.isEmpty() || !line.startsWith("impassable") ) {
+                    line = reader.readLine();
+                    continue;
+                }
 
-            // Skip empty lines and comments
-            if(line.isEmpty() || line.startsWith("#") )
-                continue;
-
-            String[] tokens = line.split(" = ");
-            if(tokens[0].equals("impassable")){
-                line = scanner.nextLine().trim();
+                line = reader.readLine().trim();
                 while(!line.startsWith("}")){
                     for(String provinceId : line.split(" ")) {
                         wastelandProvinceIds.add(Integer.parseInt(provinceId));
                     }
-                    line = scanner.nextLine().trim();
+                    line = reader.readLine().trim();
                 }
-            }
-            else{
-                while(!line.startsWith("}"))
-                    line = scanner.nextLine().trim();
             }
         }
     }
@@ -178,53 +167,56 @@ public class MapData {
 
         Path provinceDefinitionsPath = getFilePath(MapFile.DEFINITIONS, baseDir);
 
-        Scanner scanner = new Scanner(provinceDefinitionsPath, MapUtilities.ISO_CHARSET);
-        String line;
+        try(BufferedReader reader = Files.newBufferedReader(provinceDefinitionsPath, MapUtilities.ISO_CHARSET)) {
+            reader.readLine(); // Skip header
 
-        scanner.nextLine(); // Ignore header line
-        while(scanner.hasNextLine()){
-            line = scanner.nextLine();
-            String[] tokens = line.split(";");
+            String line = reader.readLine();
 
-            String name = tokens[4];
+            while(line != null){
+                String[] tokens = line.split(";");
 
-            if(name.equals("x"))
-                continue;
+                String name = tokens[4];
 
-            int id = Integer.parseInt(tokens[0]);
-            int r = Integer.parseInt(tokens[1]);
-            int g = Integer.parseInt(tokens[2]);
-            int b = Integer.parseInt(tokens[3]);
-            Color color = new Color(r, g, b);
+                if(name.equals("x"))
+                    break;
 
-            String provinceName = provinceNames.get(id);
-            if(provinceName == null)
-                provinceName = name;
+                int id = Integer.parseInt(tokens[0]);
+                int r = Integer.parseInt(tokens[1]);
+                int g = Integer.parseInt(tokens[2]);
+                int b = Integer.parseInt(tokens[3]);
+                Color color = new Color(r, g, b);
 
-            ProvinceType provinceType = provinceTypeFor(id);
+                String provinceName = provinceNames.get(id);
+                if(provinceName == null)
+                    provinceName = name;
 
-            provinces.add(new Province(id, color.getRGB(), provinceName, provinceType));
+                ProvinceType provinceType = provinceTypeFor(id);
+
+                provinces.add(new Province(id, color.getRGB(), provinceName, provinceType));
+                line = reader.readLine();
+            }
         }
     }
 
     private Map<Integer, String> loadProvinceNames(Path baseDir) throws IOException {
         Path provinceNamesPath = baseDir.resolve("localisation/prov_names_l_english.yml");
         Map<Integer, String> provinceNamesById = new HashMap<>();
-
-        Scanner scanner = new Scanner(provinceNamesPath, MapUtilities.UTF_CHARSET);
-        String line;
-
-        scanner.nextLine(); // Ignore header line
         Pattern pattern = Pattern.compile("PROV(\\d+): \"([^\"]+)\"");
 
-        while (scanner.hasNextLine()) {
-            line = scanner.nextLine().trim();
-            Matcher matcher = pattern.matcher(line);
-            matcher.find();
+        try(BufferedReader reader = Files.newBufferedReader(provinceNamesPath, MapUtilities.UTF_CHARSET)) {
+            reader.readLine();
 
-            int provinceId = Integer.parseInt(matcher.group(1));
-            String provinceName = matcher.group(2);
-            provinceNamesById.put(provinceId, provinceName);
+            String line = reader.readLine();
+
+            while (line != null) {
+                Matcher matcher = pattern.matcher(line.trim());
+                matcher.find();
+
+                int provinceId = Integer.parseInt(matcher.group(1));
+                String provinceName = matcher.group(2);
+                provinceNamesById.put(provinceId, provinceName);
+                line = reader.readLine();
+            }
         }
 
         return provinceNamesById;
@@ -233,50 +225,51 @@ public class MapData {
     private void loadPositions(Path baseDir) throws IOException {
         Path provinceDefinitionsPath = getFilePath(MapFile.POSITIONS, baseDir);
 
-        Scanner scanner = new Scanner(provinceDefinitionsPath, MapUtilities.ISO_CHARSET);
-
         Pattern pattern = Pattern.compile("(\\d+)=");
         Map<Integer, Province> provincesById = getProvincesById();
+        try(BufferedReader reader = Files.newBufferedReader(provinceDefinitionsPath, MapUtilities.ISO_CHARSET)) {
+            String line = "";
 
-        while(scanner.hasNextLine()) {
-            String line = scanner.nextLine().trim();
+            while(line != null) {
+                // Lines starting with # are comments, ignore them
+                if(line.isEmpty() || line.startsWith("#")) {
+                    line = reader.readLine();
+                    continue;
+                }
 
-            // Lines starting with # are comments, ignore them
-            if(line.startsWith("#"))
-                continue;
+                Matcher matcher = pattern.matcher(line.trim());
+                if(matcher.matches()){
+                    int provinceId = Integer.parseInt(matcher.group(1));
+                    reader.readLine(); // Open bracket
+                    reader.readLine(); // position=
+                    reader.readLine(); // Open bracket
 
-            Matcher matcher = pattern.matcher(line);
-            if(matcher.matches()){
-                int provinceId = Integer.parseInt(matcher.group(1));
-                scanner.nextLine(); // Open bracket
-                scanner.nextLine(); // position=
-                scanner.nextLine(); // Open bracket
+                    String[] tokens = reader.readLine().trim().split(" ");
+                    double cityX = Double.parseDouble(tokens[0]);
+                    double cityY = height - Double.parseDouble(tokens[1]);
+                    double unitX = Double.parseDouble(tokens[2]);
+                    double unitY = height - Double.parseDouble(tokens[3]);
+                    double textX = Double.parseDouble(tokens[2]);
+                    double textY = height - Double.parseDouble(tokens[3]);
+                    double tradeX = Double.parseDouble(tokens[2]);
+                    double tradeY = height - Double.parseDouble(tokens[3]);
+                    double portX = Double.parseDouble(tokens[2]);
+                    double portY = height - Double.parseDouble(tokens[3]);
+                    double combatX = Double.parseDouble(tokens[2]);
+                    double combatY = height - Double.parseDouble(tokens[3]);
 
-                String[] tokens = scanner.nextLine().trim().split("\\s");
-                double cityX = Double.parseDouble(tokens[0]);
-                double cityY = height - Double.parseDouble(tokens[1]);
-                double unitX = Double.parseDouble(tokens[2]);
-                double unitY = height - Double.parseDouble(tokens[3]);
-                double textX = Double.parseDouble(tokens[2]);
-                double textY = height - Double.parseDouble(tokens[3]);
-                double tradeX = Double.parseDouble(tokens[2]);
-                double tradeY = height - Double.parseDouble(tokens[3]);
-                double portX = Double.parseDouble(tokens[2]);
-                double portY = height - Double.parseDouble(tokens[3]);
-                double combatX = Double.parseDouble(tokens[2]);
-                double combatY = height - Double.parseDouble(tokens[3]);
+                    Province province = provincesById.get(provinceId);
+                    province.addPosition(PositionType.CITY, new Point2D.Double(cityX, cityY));
+                    province.addPosition(PositionType.UNIT, new Point2D.Double(unitX, unitY));
+                    province.addPosition(PositionType.TEXT, new Point2D.Double(textX, textY));
+                    province.addPosition(PositionType.TRADE, new Point2D.Double(tradeX, tradeY));
+                    province.addPosition(PositionType.PORT, new Point2D.Double(portX, portY));
+                    province.addPosition(PositionType.COMBAT, new Point2D.Double(combatX, combatY));
 
-                Province province = provincesById.get(provinceId);
-                province.addPosition(PositionType.CITY, new Point2D.Double(cityX, cityY));
-                province.addPosition(PositionType.UNIT, new Point2D.Double(unitX, unitY));
-                province.addPosition(PositionType.TEXT, new Point2D.Double(textX, textY));
-                province.addPosition(PositionType.TRADE, new Point2D.Double(tradeX, tradeY));
-                province.addPosition(PositionType.PORT, new Point2D.Double(portX, portY));
-                province.addPosition(PositionType.COMBAT, new Point2D.Double(combatX, combatY));
-
-                // Skip to next section
-                while(!line.startsWith("#") && scanner.hasNextLine())
-                    line = scanner.nextLine();
+                    // Skip to next section
+                    while(line != null && !line.startsWith("#"))
+                        line = reader.readLine();
+                }
             }
         }
     }
@@ -285,57 +278,63 @@ public class MapData {
         Map<Integer, Province> provincesById = getProvincesById();
 
         Path adjacencyDataPath = getFilePath(MapFile.ADJACENCIES, baseDir);
-        Scanner scanner = new Scanner(adjacencyDataPath, MapUtilities.ISO_CHARSET);
+        try(BufferedReader reader = Files.newBufferedReader(adjacencyDataPath, MapUtilities.ISO_CHARSET)) {
+            reader.readLine(); // Skip header
 
-        scanner.nextLine(); // Skip header
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine().trim();
-            String[] tokens = line.split(";");
+            String line = reader.readLine();
 
-            if("-1".equals(tokens[0]))
-                break;
+            while(line != null){
+                String[] tokens = line.trim().split(";");
 
-            Province fromProvince = provincesById.get(Integer.parseInt(tokens[0]));
-            Province toProvince = provincesById.get(Integer.parseInt(tokens[1]));
+                if("-1".equals(tokens[0]))
+                    break;
 
-            fromProvince.adjacentProvinces.add(toProvince);
-            toProvince.adjacentProvinces.add(fromProvince);
+                Province fromProvince = provincesById.get(Integer.parseInt(tokens[0]));
+                Province toProvince = provincesById.get(Integer.parseInt(tokens[1]));
+
+                fromProvince.adjacentProvinces.add(toProvince);
+                toProvince.adjacentProvinces.add(fromProvince);
+
+                line = reader.readLine();
+            }
         }
 
         Path mapImagePath = getFilePath(MapFile.PROVINCES, baseDir);
 
-        BufferedImage mapImage = ImageIO.read(new File(mapImagePath.toString()));
-        int[] rgbValues = mapImage.getRGB(0, 0, width, height, null, 0, width);
+        try(InputStream stream = new FileInputStream(mapImagePath.toString())){
+            BufferedImage mapImage = ImageIO.read(stream);
+            int[] rgbValues = mapImage.getRGB(0, 0, width, height, null, 0, width);
 
-        Map<Integer, Province> provincesByColor = getProvincesByColor();
+            Map<Integer, Province> provincesByColor = getProvincesByColor();
 
-        for(int i=0; i<rgbValues.length; i++){
-            int currentPixel = rgbValues[i];
+            for(int i=0; i<rgbValues.length; i++){
+                int currentPixel = rgbValues[i];
 
-            Province currentProvince = provincesByColor.get(currentPixel);
+                Province currentProvince = provincesByColor.get(currentPixel);
 
-            int x = i % width;
-            int y = i / width;
+                int x = i % width;
+                int y = i / width;
 
-            if(x > 0){
-                int west = rgbValues[i-1];
-                if(west != currentProvince.rgbColor)
-                    currentProvince.adjacentProvinces.add(provincesByColor.get(west));
-            }
-            if(x < width-1){
-                int east = rgbValues[i+1];
-                if(east != currentProvince.rgbColor)
-                    currentProvince.adjacentProvinces.add(provincesByColor.get(east));
-            }
-            if(y > 0){
-                int north = rgbValues[i-width];
-                if(north != currentProvince.rgbColor)
-                    currentProvince.adjacentProvinces.add(provincesByColor.get(north));
-            }
-            if(y < height-1){
-                int south = rgbValues[i+width];
-                if(south != currentProvince.rgbColor)
-                    currentProvince.adjacentProvinces.add(provincesByColor.get(south));
+                if(x > 0){
+                    int west = rgbValues[i-1];
+                    if(west != currentProvince.rgbColor)
+                        currentProvince.adjacentProvinces.add(provincesByColor.get(west));
+                }
+                if(x < width-1){
+                    int east = rgbValues[i+1];
+                    if(east != currentProvince.rgbColor)
+                        currentProvince.adjacentProvinces.add(provincesByColor.get(east));
+                }
+                if(y > 0){
+                    int north = rgbValues[i-width];
+                    if(north != currentProvince.rgbColor)
+                        currentProvince.adjacentProvinces.add(provincesByColor.get(north));
+                }
+                if(y < height-1){
+                    int south = rgbValues[i+width];
+                    if(south != currentProvince.rgbColor)
+                        currentProvince.adjacentProvinces.add(provincesByColor.get(south));
+                }
             }
         }
     }
@@ -343,31 +342,33 @@ public class MapData {
     private void loadRiverCrossings(Path baseDir) throws IOException{
         Path mapImagePath = getFilePath(MapFile.RIVERS, baseDir);
 
-        BufferedImage mapImage = ImageIO.read(new File(mapImagePath.toString()));
-        int[] rgbValues = mapImage.getRGB(0, 0, width, height, null, 0, width);
+        try(InputStream stream = new FileInputStream(mapImagePath.toString())) {
+            BufferedImage mapImage = ImageIO.read(stream);
+            int[] rgbValues = mapImage.getRGB(0, 0, width, height, null, 0, width);
 
-        int landRgb = 0xFFFFFFFF;
-        int waterRgb = 0xFF7A7A7A; // Seas and lakes
+            int landRgb = 0xFFFFFFFF;
+            int waterRgb = 0xFF7A7A7A; // Seas and lakes
 
-        for(Province province : provinces){
-            if(province.provinceType != ProvinceType.LAND)
-                continue;
-
-            Point2D sourcePoint = province.PositionFor(PositionType.UNIT);
-
-            for(Province adjacency : province.adjacentProvinces){
-                if(adjacency.provinceType != ProvinceType.LAND)
+            for(Province province : provinces){
+                if(province.provinceType != ProvinceType.LAND)
                     continue;
 
-                Point2D destinationPoint = adjacency.PositionFor(PositionType.UNIT);
+                Point2D sourcePoint = province.PositionFor(PositionType.UNIT);
 
-                List<Coordinate> pointsBetween = MapUtilities.getPointsBetween(sourcePoint, destinationPoint);
-                for(Coordinate coordinate : pointsBetween) {
-                    int rbgIndex = coordinate.x + width * coordinate.y;
-                    int coordinateRgb = rgbValues[rbgIndex];
-                    if (coordinateRgb != landRgb &&
-                            coordinateRgb != waterRgb)
-                        adjacency.riverCrossings.add(province);
+                for(Province adjacency : province.adjacentProvinces){
+                    if(adjacency.provinceType != ProvinceType.LAND)
+                        continue;
+
+                    Point2D destinationPoint = adjacency.PositionFor(PositionType.UNIT);
+
+                    List<Coordinate> pointsBetween = MapUtilities.getPointsBetween(sourcePoint, destinationPoint);
+                    for(Coordinate coordinate : pointsBetween) {
+                        int rbgIndex = coordinate.x + width * coordinate.y;
+                        int coordinateRgb = rgbValues[rbgIndex];
+                        if (coordinateRgb != landRgb &&
+                                coordinateRgb != waterRgb)
+                            adjacency.riverCrossings.add(province);
+                    }
                 }
             }
         }
