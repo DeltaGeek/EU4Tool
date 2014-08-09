@@ -42,13 +42,13 @@ public class CountryPane extends JPanel {
     }
 
     public void refresh() {
-        String searchText = txtCountryFilter.getText();
+        String searchText = txtCountryFilter.getText().toUpperCase();
 
         if(countryData != null){
             java.util.List<Country> filteredEvents =
                     countryData.countries
                             .stream()
-                            .filter(e -> e.name.contains(searchText))
+                            .filter(c -> c.countryName.toUpperCase().contains(searchText) || c.countryCode.contains(searchText))
                             .collect(Collectors.toList());
 
             Collections.sort(filteredEvents);

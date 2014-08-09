@@ -78,7 +78,7 @@ public class MapData {
     }
 
     private void loadMapData(Path baseDir) throws IOException {
-        Path mapDataPath = baseDir.resolve("map/default.map");
+        Path mapDataPath = baseDir.resolve("map").resolve("default.map");
 
         try(BufferedReader reader = Files.newBufferedReader(mapDataPath, MapUtilities.ISO_CHARSET)){
             String line = reader.readLine();
@@ -214,7 +214,9 @@ public class MapData {
 
                 int provinceId = Integer.parseInt(matcher.group(1));
                 String provinceName = matcher.group(2);
+
                 provinceNamesById.put(provinceId, provinceName);
+
                 line = reader.readLine();
             }
         }
