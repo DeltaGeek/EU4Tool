@@ -18,8 +18,10 @@ public class ProvincePane extends JPanel {
     private JList<Province> lstProvinces;
     private JList<Province> lstAdjacent;
     private JComboBox<ProvinceType> cbxProvinceFilter;
+    private JButton btnExport;
 
     private boolean isUpdatingAdjacency = false;
+    private ProvinceUIHandlers handlers;
 
     public ProvincePane(){
         this(null);
@@ -30,7 +32,7 @@ public class ProvincePane extends JPanel {
 
         mapData = data;
 
-        ProvinceUIHandlers handlers = new ProvinceUIHandlers(this);
+        handlers = new ProvinceUIHandlers(this, mapData);
 
         cbxProvinceFilter = new JComboBox<>(provinceFilterModel);
         cbxProvinceFilter.getModel().setSelectedItem(null);
@@ -59,14 +61,20 @@ public class ProvincePane extends JPanel {
         adjacencyPanel.add(adjacencyHeader, BorderLayout.NORTH);
         adjacencyPanel.add(adjacencyScroll, BorderLayout.CENTER);
 
+        btnExport = new JButton("Export for mod");
+        btnExport.addActionListener(handlers.getExportHandler());
+
         add(provincePanel, BorderLayout.WEST);
         add(adjacencyPanel, BorderLayout.CENTER);
+        add(btnExport, BorderLayout.SOUTH);
     }
 
     public void refresh(){
         ProvinceType filter = getSelectedProvinceFilter();
 
         if(mapData != null) {
+            handlers.setMapData(mapData);
+
             java.util.List<Province> filteredProvinces =
                     mapData.provinces
                             .stream()
@@ -133,5 +141,9 @@ public class ProvincePane extends JPanel {
     public void setData(MapData data) {
         mapData = data;
         refresh();
+    }
+
+    public void setExportButtonEnabled(boolean isEnabled) {
+        btnExport.setEnabled(isEnabled);
     }
 }

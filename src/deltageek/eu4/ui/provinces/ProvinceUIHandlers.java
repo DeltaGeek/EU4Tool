@@ -1,21 +1,33 @@
 package deltageek.eu4.ui.provinces;
 
+import deltageek.eu4.model.MapData;
 import deltageek.eu4.model.Province;
 
+import javax.swing.*;
 import javax.swing.event.ListSelectionListener;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 public class ProvinceUIHandlers {
+    private MapData mapData;
     private ProvincePane ui;
     private Province[] emptyProvinceList;
 
-    public ProvinceUIHandlers(ProvincePane provincePane){
+    public ProvinceUIHandlers(ProvincePane provincePane, MapData mapData){
         this.ui = provincePane;
+        this.mapData = mapData;
 
         emptyProvinceList = new Province[0];
+    }
+
+    public void setMapData(MapData mapData){
+        this.mapData = mapData;
     }
 
     public ListSelectionListener getProvinceSelectionHandler(){
@@ -45,6 +57,24 @@ public class ProvinceUIHandlers {
                     ui.setSelectedProvince(ui.getSelectedAdjacency());
                 }
             }
+        };
+    }
+
+    public ActionListener getExportHandler() {
+        return e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int result = fileChooser.showSaveDialog(ui);
+
+            if (result != JFileChooser.APPROVE_OPTION)
+                return;
+
+            ui.setExportButtonEnabled(false);
+
+            File selectedFile = fileChooser.getSelectedFile();
+            Path exportPath = Paths.get(selectedFile.getPath());
+            ExportToModWorker worker = new ExportToModWorker(mapData, ui, exportPath);
+            worker.execute();
         };
     }
 }

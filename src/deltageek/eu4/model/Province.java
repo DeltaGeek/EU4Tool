@@ -9,6 +9,7 @@ import java.util.Set;
 public class Province implements Comparable<Province> {
     public final int id;
     public final String name;
+    public final String nameAsIdentifier;
     public final int rgbColor;
     public final ProvinceType provinceType;
     private final Map<PositionType, Point2D> positionData;
@@ -18,6 +19,7 @@ public class Province implements Comparable<Province> {
     public Province(int id, int color, String name, ProvinceType type){
         this.id = id;
         this.name = name;
+        nameAsIdentifier = name.toLowerCase().replace(' ', '_');
         this.rgbColor = color;
         provinceType = type;
         positionData = new HashMap<>();

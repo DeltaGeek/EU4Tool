@@ -1,4 +1,4 @@
 package deltageek.eu4.model;
 
-public class EventCondition {
+public class EventTrigger {
 }
